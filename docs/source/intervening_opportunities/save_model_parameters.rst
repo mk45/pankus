@@ -14,5 +14,5 @@ Data used
 
 Effect
 ------
-- dictionary ``model_parameters`` is created
-- value of specified parameter from ``od_properties`` table is replaced with new value given by the user in function parameters
+- dictionary :ref:`model_parameters_table` is created
+- value of specified parameter from :ref:`od_properties_table` table is replaced with new value given by the user in function parameters
