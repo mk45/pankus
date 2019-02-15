@@ -4,20 +4,17 @@ __author__ = 'Maciej Kamiński Politechnika Wrocławska'
 
 import sqlite3
 import pkg_resources
-from .taurus_leaf import TaurusLeaf
+#from .taurus_leaf import TaurusLeaf
+from .utils import init_kwargs_as_parameters
 
-class SQLiteDatabase(TaurusLeaf):
+class SQLiteDatabase:
 
-    def __init__(self,**kwargs):
-        super().__init__(**kwargs)
-        self.kwargs=kwargs
-        database_name=kwargs.get('database_name','taurus.db')
+    def __init__(self,database_name='taurus.db',**kwargs):
+        super().__init__()
         self.db_connection=sqlite3.connect(database_name)
-        #
-        self.execute=self.db_connection.execute
 
-    #def execute(self,**kwargs):
-
+    def execute(self,**kwargs):
+        return self.db_connection.execute(**kwargs)
 
     def get_sql_form_file(self,script_name):
         #print(pkg_resources,__name__)

@@ -6,13 +6,15 @@ __author__ = 'Maciej Kamiński Politechnika Wrocławska'
 import numpy as np
 from .importer import Importer
 from .data_journal import DataJournal
+from .utils import init_kwargs_as_parameters
+
 
 class Analysis(DataJournal):
 
     def __init__(self,**kwargs):
         super().__init__(**kwargs)
-        self.kwargs=kwargs
 
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("model_parameters")
     def solve_for_origins(self,**kwargs):
         '''
@@ -50,6 +52,7 @@ class Analysis(DataJournal):
         self.transaction("analysis/update_origins",new_origins_value)
         return accuracy
 
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash()
     def get_no_ring_pairs(self,**kwargs):
         for a,b in self.do('intopp/select_od_id_with_no_ring_assigned').fetchall():

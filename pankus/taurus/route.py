@@ -3,36 +3,36 @@
 __author__ = 'Maciej Kamiński Politechnika Wrocławska'
 
 import json,pdb,math
-from .taurus_leaf import TaurusLeaf
 from .utils import TaurusLongTask
 from heapq import heappush,heappop
 from vincenty import vincenty
 from .data_journal import DataJournal
+from .utils import init_kwargs_as_parameters
 
 class Route(DataJournal):
 
+
     def __init__(self,**kwargs):
         super().__init__(**kwargs)
-        self.kwargs=kwargs
-        self.weight_name=kwargs.get('weight_name','weight')
-        self.throughput_name=kwargs.get('throughput_name','throughput')
-
 
     # generates connections between pairs of points. A connection has specified start, end and weight written in the table "connection".
     # Connections are inserted into tables using SQL scripts "create_connection" and "insert_connection".
     # "insert_connection" script uses tables "network_geometry" and "point" to write data into new tables.
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("connection")
-    def generate_connections(self,**kwargs):
+    def generate_connections(self,weight_name="weight",**kwargs):
         """
         "generate_connections" function creates connections between pairs of points using network geometry and points data.
         Each connection is expressed as a set of data - start id, end id and weight.
+
         """
 
         self.do('route/create_connection')
         self.do('route/insert_connection',{
-            'weight_name':self.weight_name
+            'weight_name':weight_name
         })
 
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("distance")
     def distance_air_lines(self,distance_type="geom",**kwargs):
         """
@@ -49,7 +49,7 @@ class Route(DataJournal):
         for start_point_geometry,start,_, in TaurusLongTask(\
                                                 featured_points,\
                                                 additional_text='Distances',\
-                                                **self.kwargs):
+                                                **kwargs):
             new_distances=[]
             sp_json_geometry=json.loads(start_point_geometry)
 
@@ -79,6 +79,7 @@ class Route(DataJournal):
     # it creates distances meant as routes between pairs of origin-destination points, built from previously generated connections.
     # Distances are written in the table distance. Each record in the distance table is described by following parameters: start id, end id, weight, successorr id and predecessor id.
     # Data is written into table distance using SQL script "import_distance".
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("distance")
     def distance(self,**kwargs):
         """
@@ -99,7 +100,7 @@ class Route(DataJournal):
         for _,start,_, in TaurusLongTask(\
                             featured_points,\
                             additional_text='Distances',\
-                            **self.kwargs):
+                            **kwargs):
             #heap
             H=[]
             new_distances = [{

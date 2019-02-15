@@ -4,13 +4,13 @@ __author__ = 'Maciej Kamiński Politechnika Wrocławska'
 
 from .sqlite_database import SQLiteDatabase
 from .importer import Importer
+from .utils import init_kwargs_as_parameters
 import cmath
 
 class NetworkGenerator(Importer):
 
     def __init__(self,**kwargs):
         super().__init__(**kwargs)
-        self.kwargs=kwargs
 
     # adding new rows to tables: network_geometry and network_properties, these new rows contain data on specified segments connecting points in the network
     def _addel(self,element,elementrel,net_geometry_to_insert,net_data_to_insert,value=1):
@@ -81,6 +81,7 @@ class NetworkGenerator(Importer):
         self.transaction('initial/import_od_geometry',od_geometry_to_insert)
         self.transaction('initial/import_od_properties',od_data_to_insert)
 
+    @init_kwargs_as_parameters
     @Importer.log_and_stash("network_properties", "network_geometry")
     def make_hexhorny_pattern_network(self,size,delta=0.0001,**kwargs):
 
@@ -172,6 +173,7 @@ class NetworkGenerator(Importer):
         self.point_from_network_od()
 
 
+    @init_kwargs_as_parameters
     @Importer.log_and_stash("network_properties", "network_geometry")
     def make_trianglehex_pattern_network(self,size,delta=0.0001,**kwargs):
 
@@ -230,6 +232,7 @@ class NetworkGenerator(Importer):
         self.transaction('initial/import_network_properties',net_data_to_insert)
         self.point_from_network_od()
 
+    @init_kwargs_as_parameters
     @Importer.log_and_stash("network_properties", "network_geometry")
     def make_hexdiagonal_pattern_network(self,size,delta=0.0001,**kwargs):
 
@@ -347,6 +350,7 @@ class NetworkGenerator(Importer):
 
 
 
+    @init_kwargs_as_parameters
     @Importer.log_and_stash("network_properties", "network_geometry")
     def make_hex_pattern_network(self,size,delta=0.0001,**kwargs):
         '''
@@ -422,6 +426,7 @@ class NetworkGenerator(Importer):
         self.transaction('initial/import_network_properties',net_data_to_insert)
         self.point_from_network_od()
 
+    @init_kwargs_as_parameters
     @Importer.log_and_stash("network_properties", "network_geometry")
     def make_square_pattern_network(self,size,delta=0.0001,**kwargs):
         '''

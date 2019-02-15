@@ -5,39 +5,36 @@ __author__ = 'Maciej Kamiński Politechnika Wrocławska'
 import json,pdb,math
 from .utils import TaurusLongTask
 from .data_journal import DataJournal
+from .utils import init_kwargs_as_parameters
 
 class InterveningOpportunities(DataJournal):
 
     # uploading keyword arguments, if the value is missing field is filled with default value
     def __init__(self,**kwargs):
-        """
-        uploading keyword arguments, if the value is missing field is filled with default value
-        :param kwargs:
-        """
         super().__init__(**kwargs)
-        self.kwargs=kwargs
-        self.origins_name=kwargs.get('origins_name','origins')
-        self.destinations_name=kwargs.get('destinations_name','destinations')
-        self.selectivity_name=kwargs.get('selectivity_name','selectivity')
-        self.convolution_start_name=kwargs.get('convolution_start_name','conv_a')
-        self.convolution_size_name=kwargs.get('convolution_size_name','conv_b')
-        self.convolution_intensity_name=kwargs.get('convolution_intensity_name','conv_alpha')
-        self.fixed_rings_name = kwargs.get('fixed_rings_name', 'fixed_rings')
 
     # importing model parameters, if the values are not given default values from function init are used
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("model_parameters")
-    def import_model_parameters(self,**kwargs):
+    def import_model_parameters(self,
+                                origins_name='origins',
+                                destinations_name='destinatons',
+                                selectivity_name='selectivity',
+                                convolution_start_name='conv_a',
+                                convolution_size_name='conv_b',
+                                convolution_intensity_name='conv_alpha',
+                                **kwargs):
         """
         importing model parameters, if the values are not given default values from function init are used
         """
         self.do('intopp/create_model_parameters')
         self.do('intopp/insert_model_parameters',{
-            'origins_name':self.origins_name,
-            'destinations_name':self.destinations_name,
-            'selectivity_name':self.selectivity_name,
-            'convolution_start_name':self.convolution_start_name,
-            'convolution_size_name':self.convolution_size_name,
-            'convolution_intensity_name':self.convolution_intensity_name
+            'origins_name':origins_name,
+            'destinations_name':destinations_name,
+            'selectivity_name':selectivity_name,
+            'convolution_start_name':convolution_start_name,
+            'convolution_size_name':convolution_size_name,
+            'convolution_intensity_name':convolution_intensity_name
         })
 
     # creating selectivity, a parameter describing probability of object choosing a point as a destination,
@@ -46,7 +43,7 @@ class InterveningOpportunities(DataJournal):
     # which is later updated in the "model_parameters" table.
     # Before being written in the table value of selectivity is multiplied by 1 000 000 to include its fractional part with high accuracy.
     # When selectivity value is used in calculations it is divided by the same number.
-
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("model_parameters")
     def create_escape_fraction_selectivity(self,efs,**kwargs):
         """
@@ -74,7 +71,7 @@ class InterveningOpportunities(DataJournal):
     # Function selects maximum value of distance from table distance then uses it to calculate a factor essential in rings creation.
     # In calculations maximum distance is multiplied by 1.0001 in order to move slightly the border of last ring so the furthest point in the network is included.
     # Table "ring" is filled using SQL script "insert_ring_uniform"
-
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("ring")
     def build_uniform_rings(self,no_of_rings,**kwargs):
         """
@@ -92,6 +89,7 @@ class InterveningOpportunities(DataJournal):
         # We must update it
         self.merge_ring_with_next(no_of_rings)
 
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("ring")
     def build_weighted_rings(self,weight,**kwargs):
         """
@@ -104,6 +102,7 @@ class InterveningOpportunities(DataJournal):
         factor=weight
         self.do('intopp/insert_ring_weighted',{'factor':factor})
 
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("ring")
     def merge_ring_with_next(self, n, **kwargs):
         """
@@ -114,6 +113,7 @@ class InterveningOpportunities(DataJournal):
         """
         self.do('intopp/update_ring_next', {'ring': n})
 
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("ring")
     def only_origin_in_first_ring(self, **kwargs):
         """
@@ -121,21 +121,26 @@ class InterveningOpportunities(DataJournal):
         """
         self.do('intopp/update_origin_in_first_ring')
 
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("ring_layout")
-    def read_rings_layout(self,layout=None,**kwargs):
+    def read_rings_layout(self,fixed_rings_layout=None,fixed_rings_name=None,**kwargs):
         """
-        read_rings_layout either uses layout given by the user in function parameters or loads the data from list od_properties table and prepares the table ring_layout necessary to create rings in specified layout
+        read_rings_layout either uses fixed_rings_layout given by the user in
+        function parameters or loads the data from list od_properties table
+        and prepares the table ring_layout necessary to create rings in specified layout
 
         Args:
-            layout (list<float>):
-            example:self.
-            [2.5,2.5,1,1,2,5,10,10]
+            fixed_rings_layout (list<float>):
+                example:
+                [2.5,2.5,1,1,2,5,10,10]
+            fixed_rings_name (sting)
+                name of the field in od_properties table
         """
         self.do('intopp/create_ring_layout')
-        #worek na przyszłe wartości
+        #bag for future values
         rings_layout = []
 
-        for od_id, layout_from_od_description in self.do('intopp/select_ring_layout',{"fixed_rings_name":self.fixed_rings_name}):
+        for od_id, layout_from_od_description in self.do('intopp/select_ring_layout',{"fixed_rings_name":fixed_rings_name}):
             # the vlue of layout for origin  we will insert
             layout_value=[]
             if layout:
@@ -158,6 +163,7 @@ class InterveningOpportunities(DataJournal):
 
         self.transaction('intopp/insert_ring_layout',rings_layout)
 
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("ring")
     def build_rings_from_layout(self,**kwargs):
         """
@@ -166,6 +172,7 @@ class InterveningOpportunities(DataJournal):
         self.do('intopp/create_ring')
         self.do('intopp/insert_ring_from_layout')
 
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("ring")
     def snap_outstanding_od_to_last_ring(self,**kwargs):
         """
@@ -173,6 +180,7 @@ class InterveningOpportunities(DataJournal):
         """
         self.do('intopp/insert_into_last_ring')
 
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash()
     def get_max_distance(self,**kwargs):
         """
@@ -186,6 +194,7 @@ class InterveningOpportunities(DataJournal):
 
     # creating table "ring_total" containing data on number of destinations located in specified ring and sum of all the destinations from rings prior to the described ring.
     # Table is filled by SQL script which uses tables "ring" and "model_parameters"
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("ring_total")
     def ring_total(self,**kwargs):
         """
@@ -197,6 +206,7 @@ class InterveningOpportunities(DataJournal):
 
     # normalization of motion exchange. All the "objects" left in te network are set to be new 100% of network population
     # ("objects" that left the network in search for destinatons aren't included). SQL script "normalization" uses tables "motion_exchange_fraction" and creates helper table "temp_motion_exchange_fraction_total". Table "motion_exchange" is then updated with normalized values.
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("motion_exchange", "motion_exchange_fraction")
     def normalize_motion_exchange(self,**kwargs):
         """
@@ -206,6 +216,7 @@ class InterveningOpportunities(DataJournal):
         """
         self.do('intopp/normalization')
 
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("model_parameters")
     def destination_shift(self,**kwargs):
         """
@@ -213,6 +224,7 @@ class InterveningOpportunities(DataJournal):
         """
         self.do('intopp/destination_shift')
 
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("model_parameters")
     def general_shift(self,**kwargs):
         """
@@ -220,6 +232,7 @@ class InterveningOpportunities(DataJournal):
         """
         self.do('intopp/general_shift')
 
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("model_parameters")
     def origins_shift(self,**kwargs):
         """
@@ -227,6 +240,7 @@ class InterveningOpportunities(DataJournal):
         """
         self.do('intopp/origins_shift')
 
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("od_properties")
     def save_intopp_parameters(self,suffix,**kwargs):
         """
@@ -240,6 +254,7 @@ class InterveningOpportunities(DataJournal):
 
 
     #calculating numbers of transported "objects". Results are written in the "motion_exchange" table, describing accurate quantity of transported "objects" and "motion_exchange_fraction" table, describing the same amounts in a form of fractions. Due to the model nature especially importatnt are fraction of "objects" which found destination in a chosen ring and fraction of "objects" which found destinations in the prior rings. "motion_exchange" function uses data stored in tables "ring", "ring_total" and "model_parameters".
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("motion_exchange", "motion_exchange_fraction")
     def motion_exchange(self,**kwargs):
         """
@@ -269,7 +284,7 @@ class InterveningOpportunities(DataJournal):
                                 self.do('intopp/select_for_motion_exchange'),\
                                 max_value=expected_problem_size,\
                                 additional_text='Intervening Opportunities',\
-                                **self.kwargs\
+                                **kwargs\
                                 ):
 
             # calculating fraction of all "objects" that found destinations prior to the currently chosen ring
@@ -350,6 +365,7 @@ class InterveningOpportunities(DataJournal):
                    self.convolution_cdf(origins,selectivity,0,0)*(1.0-alpha)
         return self.convolution_cdf(origins,selectivity,0,0)
 
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("od_properties")
     def save_model_parameters(self,parameter,saved_name,**kwargs):
         """

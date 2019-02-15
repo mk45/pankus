@@ -16,4 +16,5 @@ from .data_journal import DataJournal
 class Taurus(Route,InterveningOpportunities,MST,NetworkGenerator,Analysis,DataJournal):
 
     def __init__(self,**kwargs):
+        self.kwargs=kwargs
         super().__init__(**kwargs)

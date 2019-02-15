@@ -5,25 +5,25 @@ __author__ = 'Maciej Kamiński Politechnika Wrocławska'
 import json,pdb
 from .utils import TaurusLongTask
 from .data_journal import DataJournal
+from .utils import init_kwargs_as_parameters
 
 class Importer(DataJournal):
 
     def __init__(self,**kwargs):
         super().__init__(**kwargs)
-        self.kwargs=kwargs
-        self.network_filename=kwargs.get('network_filename','net.geojson')
-        self.od_filename=kwargs.get('od_filename','od.geojson')
-        self.od_id_name=kwargs.get('od_id_name','od_id')
 
-    def import_network_geojson(self,make_two_side=False):
+    @init_kwargs_as_parameters
+    def import_network_geojson(self,
+                                make_two_side=False,
+                                network_filename="net.geojson",
+                                **kwargs):
         self.do('initial/create_network')
-        with open(self.network_filename,'rb') as net:
+        with open(network_filename,'rb') as net:
             net_data=json.load(net)
-            # print(net_data.keys())
 
             geometry_to_insert=[]
             data_to_insert=[]
-            for feature in TaurusLongTask(net_data['features'],**self.kwargs):
+            for feature in TaurusLongTask(net_data['features'],**wargs):
                 assert 'LineString' == feature['geometry']['type']
 
                 linestring=json.dumps(feature['geometry']['coordinates'])
@@ -67,18 +67,20 @@ class Importer(DataJournal):
             self.point_from_network_od()
             self.check_geometry()
 
-    def import_od_geojson(self):
+    @init_kwargs_as_parameters
+    def import_od_geojson(self,od_filename="od.geojson",od_id_name="od_id",**kwargs):
+        print(od_filename,od_id_name,kwargs)
         self.do('initial/create_od')
-        with open(self.od_filename,'rb') as od:
+        with open(od_filename,'rb') as od:
             od_data=json.load(od)
 
             geometry_to_insert=[]
             data_to_insert=[]
-            for feature in TaurusLongTask(od_data['features'],**self.kwargs):
+            for feature in TaurusLongTask(od_data['features'],**kwargs):
                 assert 'Point' == feature['geometry']['type']
-                assert self.od_id_name in feature['properties']
+                assert od_id_name in feature['properties']
 
-                od_id=feature['properties'][self.od_id_name]
+                od_id=feature['properties'][od_id_name]
                 geometry=json.dumps(feature['geometry']['coordinates'])
                 geometry_to_insert.append({
                     'od_id':int(od_id),
@@ -100,6 +102,7 @@ class Importer(DataJournal):
             self.point_from_network_od()
             self.check_geometry()
 
+
     def point_from_network_od(self):
         self.do('initial/create_point')
         self.do('initial/insert_point')
@@ -108,13 +111,15 @@ class Importer(DataJournal):
         self.do('initial/create_point')
         self.do('initial/insert_point_from_od')
 
-    def check_geometry(self):
+    @init_kwargs_as_parameters
+    def check_geometry(self,**kwargs):
         for point, in self.do('initial/check_geometry'):
             print("problem with geometry at:", point)
         if not list(self.do('initial/check_geometry')):
             print("No geometry problems")
 
-    def fix_geometry(self,range):
+    @init_kwargs_as_parameters
+    def fix_geometry(self,range=0.01,**kwargs):
         self.do('initial/fix_geometry',{'range':range})
         self.point_from_network_od()
         self.check_geometry()

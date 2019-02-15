@@ -8,7 +8,6 @@ class Path(DataJournal):
 
     def __init__(self,**kwargs):
         super().__init__(**kwargs)
-        self.kwargs=kwargs
 
     def create_path(self,k_path=1):
         if k_path > 1:

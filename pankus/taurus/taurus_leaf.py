@@ -6,4 +6,4 @@ class TaurusLeaf:
 
     def __init__(self,**kwargs):
         super().__init__()
-        self.kwargs=kwargs
+        #self.kwargs=kwargs

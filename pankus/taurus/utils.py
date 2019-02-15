@@ -2,30 +2,32 @@
 # -*- coding: utf-8 -*-
 __author__ = 'Maciej Kamiński Politechnika Wrocławska'
 
-import progressbar
+import progressbar as pb
+from functools import wraps
 
 class TaurusLongTask:
 
-    def __init__(self,iterable,**kwargs):
+    def __init__(self,iterable,
+                    progressbar=True,
+                    max_value=pb.UnknownLength,
+                    additional_text='',
+                    **kwargs):
         self.iterator=iter(iterable)
-        self.if_progressbar=kwargs.get('progressbar',True)
+        self.if_progressbar=progressbar
         if hasattr(iterable, '__len__'):
             self.max_value=len(iterable)
         else:
-            self.max_value=kwargs.get('max_value',progressbar.UnknownLength)
-        self.additional_text=kwargs.get('additional_text','')
-        self.bar_widgets=kwargs.get('progressbar_widgets',\
-            [ \
-                self.additional_text+' [', progressbar.Timer(), '] ', \
-                progressbar.Bar(), \
-                ' (', progressbar.ETA(), ') ', \
-            ]\
-        )
-
+            self.max_value=max_value
+        self.additional_text=additional_text
+        self.bar_widgets=[ \
+                            additional_text+' [', pb.Timer(), '] ', \
+                            pb.Bar(), \
+                            ' (', pb.ETA(), ') ', \
+                        ]
 
     def __iter__(self):
         if self.if_progressbar:
-            self.bar=progressbar.ProgressBar(\
+            self.bar=pb.ProgressBar(\
                 max_value=self.max_value,\
                 widgets=self.bar_widgets,\
             )
@@ -41,4 +43,8 @@ class TaurusLongTask:
             self.bar.finish()
             raise error
 
-        
+def init_kwargs_as_parameters(function):
+    @wraps(function)
+    def wrapper(self,*args,**kwargs):
+        return function(self,*args,**{**self.kwargs,**kwargs})
+    return wrapper

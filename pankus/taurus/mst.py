@@ -4,12 +4,14 @@ __author__ = 'Maciej Kamiński Politechnika Wrocławska'
 
 import json,pdb
 from .data_journal import DataJournal
+from .utils import init_kwargs_as_parameters
 
 class MST(DataJournal):
 
     def __init__(self,**kwargs):
         super().__init__(**kwargs)
 
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("bmst_connection", "bmst")
     def minimum_spanning_tree_from_network(self,**kwargs):
         self.do('mst/create_boruvka_mst')
@@ -18,6 +20,7 @@ class MST(DataJournal):
         self.save_bmst_parameters=self.save_bmst_parameters_to_od_properties
         self.mst()
 
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("bmst_connection", "bmst")
     def minimum_spanning_tree_from_distance(self,**kwargs):
         self.do('mst/create_boruvka_mst')
@@ -26,11 +29,13 @@ class MST(DataJournal):
         self.save_bmst_parameters=self.save_bmst_parameters_to_network
         self.mst()
 
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash()
     def save_bmst_parameters(self,suffix,**kwargs):
         #only proxy function Wont work until mst executed
         pass
 
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("od_properties")
     def save_bmst_parameters_to_od_properties(self,suffix='supernode',**kwargs):
         max_level=self.one('bmst/select_max_level')[0]
@@ -40,6 +45,7 @@ class MST(DataJournal):
                 'supernode_level_name':'L'+str(level)+suffix
             })
 
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("network_properties")
     def save_bmst_parameters_to_network(self,suffix='supernode',level="Level",**kwargs):
         self.do('bmst/save_network_level',{
@@ -53,8 +59,7 @@ class MST(DataJournal):
             })
 
 
-
-
+    @init_kwargs_as_parameters
     @DataJournal.log_and_stash("bmst", "bmst_used_connection")
     def mst(self,**kwargs):
         #iterator=iter(ProgressBar(range(len(featured_points)**2)))
