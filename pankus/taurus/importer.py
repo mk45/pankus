@@ -16,6 +16,7 @@ class Importer(DataJournal):
     def import_network_geojson(self,
                                 make_two_side=False,
                                 network_filename="net.geojson",
+
                                 **kwargs):
         self.do('initial/create_network')
         with open(network_filename,'rb') as net:
@@ -24,11 +25,18 @@ class Importer(DataJournal):
             geometry_to_insert=[]
             data_to_insert=[]
             for feature in TaurusLongTask(net_data['features'],**wargs):
-                assert 'LineString' == feature['geometry']['type']
+                if "MultiLineString" == feature['geometry']['type']
+                    if len(feature['geometry']['coordinates'])!=1:
+                        raise ValueError("Geometry error in feature "+str(feature))
+                    geometry = feature['geometry']['coordinates'][0]
+                elif 'LineString' == feature['geometry']['type']
+                    geometry = feature['geometry']['coordinates']
+                else:
+                    raise ValueError("Unsupported geomety in feature "+str(feature))
 
-                linestring=json.dumps(feature['geometry']['coordinates'])
-                start=json.dumps(feature['geometry']['coordinates'][0])
-                end=json.dumps(feature['geometry']['coordinates'][-1])
+                linestring=json.dumps(geometry)
+                start=json.dumps(geometry[0])
+                end=json.dumps(geometry[-1])
 
                 geometry_to_insert.append({
                     'start':str(start),
