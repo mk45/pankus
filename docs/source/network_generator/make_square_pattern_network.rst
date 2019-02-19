@@ -1,6 +1,8 @@
 make_square_pattern_network
 ============================
 
+.. autofunction:: pankus.taurus.NetworkGenerator.make_square_pattern_network
+
 Data used
 ----------
 

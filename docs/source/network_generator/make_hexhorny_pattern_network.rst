@@ -1,6 +1,8 @@
 make_hexhorny_pattern_network
 ==============================
 
+.. autofunction:: pankus.taurus.NetworkGenerator.make_hexhorny_pattern_network
+
 Data used
 ----------
 

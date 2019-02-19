@@ -1,6 +1,8 @@
 make_hexdiagonal_pattern_network
 ==================================
 
+.. autofunction:: pankus.taurus.NetworkGenerator.make_hexdiagonal_pattern_network
+
 Data used
 ----------
 
