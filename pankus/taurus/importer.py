@@ -25,11 +25,11 @@ class Importer(DataJournal):
             geometry_to_insert=[]
             data_to_insert=[]
             for feature in TaurusLongTask(net_data['features'],**wargs):
-                if "MultiLineString" == feature['geometry']['type']
+                if "MultiLineString" == feature['geometry']['type']:
                     if len(feature['geometry']['coordinates'])!=1:
                         raise ValueError("Geometry error in feature "+str(feature))
                     geometry = feature['geometry']['coordinates'][0]
-                elif 'LineString' == feature['geometry']['type']
+                elif 'LineString' == feature['geometry']['type']:
                     geometry = feature['geometry']['coordinates']
                 else:
                     raise ValueError("Unsupported geomety in feature "+str(feature))
