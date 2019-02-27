@@ -12,8 +12,9 @@ from .mst import MST
 from .network_generators import NetworkGenerator
 from .analysis import Analysis
 from .data_journal import DataJournal
+from .exporter import Exporter
 
-class Taurus(Route,InterveningOpportunities,MST,NetworkGenerator,Analysis,DataJournal):
+class Taurus(Route,InterveningOpportunities,MST,NetworkGenerator,Analysis,Exporter):
 
     def __init__(self,**kwargs):
         self.kwargs=kwargs
