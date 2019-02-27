@@ -5,6 +5,7 @@ __author__ = 'Maciej Kamiński Politechnika Wrocławska'
 from .sqlite_database import SQLiteDatabase
 from .importer import Importer
 from .utils import init_kwargs_as_parameters
+from itertools import accumulate
 import cmath
 
 class NetworkGenerator(Importer):
@@ -486,6 +487,119 @@ class NetworkGenerator(Importer):
                     self._addel(element,rows[y][x-1],net_geometry_to_insert,net_data_to_insert)
                 if x!=len(row)-1:
                     self._addel(element,rows[y][x+1],net_geometry_to_insert,net_data_to_insert)
+
+        self.transaction('initial/import_network_geometry',net_geometry_to_insert)
+        self.transaction('initial/import_network_properties',net_data_to_insert)
+        self.point_from_network_od()
+
+    @init_kwargs_as_parameters
+    @Importer.log_and_stash("network_properties", "network_geometry")
+    def make_trihexhex_pattern_network(self,size,delta=0.0001,**kwargs):
+        '''
+        Creates trihexhex pattern network.
+        mede out of tri-hexagons layers round tri-hexagon
+        Coresponding origins - destinations points are also created.
+        origins - destinations are set in way their total sum is 1 for origins and destinations.
+        Points for abstract network are generated in WSG84 coordinate system starting at point (0,0).
+        On this level we use globe WSG84 as a Carthesian coordinates system.
+        Don't use it for
+
+        :param size: How many layers to create. 1 by 1 lines create just a square.
+        :param delta: Network relative (to earth WSG84) size.
+        :return:
+        '''
+        self.do('initial/create_network')
+        self.do('initial/create_od')
+
+        # main Point generator part
+        points=[]
+        rows=[]
+        vector=cmath.rect(1,cmath.pi/6) # single vector of 1/12 circle
+        v=vector
+        vcon=v.conjugate()
+
+        p=complex(0,0)
+        row_generator=p
+        k_top=size
+
+        points.append(p)
+
+
+        row_starting_point=[1]
+        row_starting_point+=[2,1]*size
+        row_starting_point=list(accumulate(row_starting_point))
+        row_starting_point=[(-vcon)*i for i in row_starting_point]
+
+        row_type=[1]
+        row_type+=[(i+1)*3+1 for i in range(size)]
+        row_type+=list(reversed([1-(i+1)*3 for i in range(size)]))
+        row_type=list(reversed(row_type))
+
+        row_generator=[3]*(size+1) # not a point
+        row_generator[0]-=1
+        row_generator[-1]-=1
+        row_generator=list(accumulate(row_generator))
+        row_generator=[(-vcon)*i for i in row_generator]
+
+        for rg_i,rg in enumerate(row_generator):
+            rg=rg+complex(0,1)
+            r=rg
+            row=[r]
+            u,d = v,v.conjugate()
+            if row_type[rg_i]<0:
+                u,d=d,u
+            for i in range(abs(row_type[rg_i])):
+                r+=u
+                row.append(r)
+                r+=d
+                row.append(r)
+
+            rows.append(row)
+        del(row_type[0:len(row_generator)])
+        u,d = v,v.conjugate()
+        for rt in row_type:
+            rg+=3*v
+            r=rg
+            row=[r]
+            for i in range(rt):
+                r+=u
+                row.append(r)
+                r+=d
+                row.append(r)
+            rows.append(row)
+
+
+        for turn in [1,v**4,v**8]:
+            for row in rows:
+                for point in row:
+                    points.append(turn*point*delta)
+            for point in row_starting_point:
+                points.append(turn*point*delta)
+
+        # Let add some data to geometries
+        points_with_data=[{
+            'geometry':[point.real,point.imag],
+            'data':{
+                'od_id':i,
+                'origins':1,
+                'destinations':1
+            }
+        } for i,point in enumerate(points)]
+
+        # Data normalization
+        self._normalize(points_with_data)
+
+        #insert
+        self._insert_points(points_with_data)
+
+        # Creating network. Data from the matrix created earlier is prepared to be written in the "network_geometry" and "network_properties" tables by being written into net_geometry_to_insert and net_data_to_insert tables. Then SQL scripts use the prepared data to insert it in the network_geometry" and "network_properties" tables.
+        net_geometry_to_insert=[]
+        net_data_to_insert=[]
+
+        for p1 in points:
+            for p2 in points:
+                if p1!=p2 and abs(p1-p2)<delta*1.1:
+                    self._addel(p1,p2,net_geometry_to_insert,net_data_to_insert)
 
         self.transaction('initial/import_network_geometry',net_geometry_to_insert)
         self.transaction('initial/import_network_properties',net_data_to_insert)
