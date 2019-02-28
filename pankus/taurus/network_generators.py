@@ -502,7 +502,6 @@ class NetworkGenerator(Importer):
         origins - destinations are set in way their total sum is 1 for origins and destinations.
         Points for abstract network are generated in WSG84 coordinate system starting at point (0,0).
         On this level we use globe WSG84 as a Carthesian coordinates system.
-        Don't use it for
 
         :param size: How many layers to create. 1 by 1 lines create just a square.
         :param delta: Network relative (to earth WSG84) size.
@@ -519,11 +518,8 @@ class NetworkGenerator(Importer):
         vcon=v.conjugate()
 
         p=complex(0,0)
-        row_generator=p
-        k_top=size
 
         points.append(p)
-
 
         row_starting_point=[1]
         row_starting_point+=[2,1]*size
@@ -600,6 +596,275 @@ class NetworkGenerator(Importer):
             for p2 in points:
                 if p1!=p2 and abs(p1-p2)<delta*1.1:
                     self._addel(p1,p2,net_geometry_to_insert,net_data_to_insert)
+
+        self.transaction('initial/import_network_geometry',net_geometry_to_insert)
+        self.transaction('initial/import_network_properties',net_data_to_insert)
+        self.point_from_network_od()
+
+
+    @init_kwargs_as_parameters
+    @Importer.log_and_stash("network_properties", "network_geometry")
+    def make_octagonlike_square_pattern_network(self,size,delta=0.0001,**kwargs):
+        '''
+        Creates octagon looked like pattern network mede out of squares.
+        Coresponding origins - destinations points are also created.
+        origins - destinations are set in way their total sum is 1 for origins and destinations.
+        Points for abstract network are generated in WSG84 coordinate system starting at point (0,0).
+        On this level we use globe WSG84 as a Carthesian coordinates system.
+
+        :param size: How many layers to create. 1 by 1 lines create just a square.
+        :param delta: Network relative (to earth WSG84) size.
+        :return:
+        '''
+        self.do('initial/create_network')
+        self.do('initial/create_od')
+
+        # main Point generator part
+        points=[]
+        rows=[]
+        points.append(complex(0,0))
+        vector=complex(0,1) # single vector of 1/12 circle
+        row_type=[(i+1)*2 for i in range(size+1)]
+        row_type=[(i+1)*2 for i in range(size+1)]
+        row_type+=[row_type[-1]]
+        for i in range(size):
+            row_type+=[row_type[-1]+1,row_type[-1]+1]
+        del(row_type[-1])
+        row_type=list(reversed(row_type))
+        row_generator=[(i+1)*vector for i in range(len(row_type))]
+
+        while row_type!=[]:
+            row=[row_generator[0]+i for i in range(row_type[0]) ]
+
+            rows.append(row)
+            del(row_generator[0])
+            del(row_type[0])
+        parts=[
+            [
+                [
+                    point*part*delta
+                    for point in row
+                ]
+                for row in rows
+            ]
+            for part in [1,vector,vector**2,vector**3]
+        ]
+        net_geometry_to_insert=[]
+        net_data_to_insert=[]
+
+        # Creating network. Data from the matrix created earlier is prepared to be written in the "network_geometry" and "network_properties" tables by being written into net_geometry_to_insert and net_data_to_insert tables. Then SQL scripts use the prepared data to insert it in the network_geometry" and "network_properties" tables.
+
+        for part_idx,rows in enumerate(parts):
+            self._addel(
+                parts[part_idx][0][0],
+                points[0],
+                net_geometry_to_insert,net_data_to_insert)
+            self._addel(
+                points[0],
+                parts[part_idx][0][0],
+                net_geometry_to_insert,net_data_to_insert)
+            for row_idx,row in enumerate(rows):
+                for point_idx,point in enumerate(row):
+                    if row_idx!=0:
+                        self._addel(
+                            parts[part_idx][row_idx][point_idx],
+                            parts[part_idx][row_idx-1][point_idx],
+                            net_geometry_to_insert,net_data_to_insert)
+                        self._addel(
+                            parts[part_idx][row_idx-1][point_idx],
+                            parts[part_idx][row_idx][point_idx],
+                            net_geometry_to_insert,net_data_to_insert)
+                    if point_idx!=0:
+                        self._addel(
+                            parts[part_idx][row_idx][point_idx],
+                            parts[part_idx][row_idx][point_idx-1],
+                            net_geometry_to_insert,net_data_to_insert)
+                        self._addel(
+                            parts[part_idx][row_idx][point_idx-1],
+                            parts[part_idx][row_idx][point_idx],
+                            net_geometry_to_insert,net_data_to_insert)
+                    if point_idx==0:
+                        self._addel(
+                            parts[(part_idx+1)%4][0][row_idx+1],
+                            parts[part_idx][row_idx][0],
+                            net_geometry_to_insert,net_data_to_insert)
+                        self._addel(
+                            parts[part_idx][row_idx][0],
+                            parts[(part_idx+1)%4][0][row_idx+1],
+                            net_geometry_to_insert,net_data_to_insert)
+
+                    points.append(point)
+
+
+        # Let add some data to geometries
+        points_with_data=[{
+            'geometry':[point.real,point.imag],
+            'data':{
+                'od_id':i,
+                'origins':1,
+                'destinations':1
+            }
+        } for i,point in enumerate(points)]
+
+        # Data normalization
+        self._normalize(points_with_data)
+
+        #insert
+        self._insert_points(points_with_data)
+
+
+        self.transaction('initial/import_network_geometry',net_geometry_to_insert)
+        self.transaction('initial/import_network_properties',net_data_to_insert)
+        self.point_from_network_od()
+
+
+    @init_kwargs_as_parameters
+    @Importer.log_and_stash("network_properties", "network_geometry")
+    def make_snowflake_pattern_network(self,size,delta=0.0001,**kwargs):
+        '''
+        Creates snowflake looked like pattern network.
+        Coresponding origins - destinations points are also created.
+        origins - destinations are set in way their total sum is 1 for origins and destinations.
+        Points for abstract network are generated in WSG84 coordinate system starting at point (0,0).
+        On this level we use globe WSG84 as a Carthesian coordinates system.
+
+        :param size: How many layers to create. 1 by 1 lines create just a square.
+        :param delta: Network relative (to earth WSG84) size.
+        :return:
+        '''
+        self.do('initial/create_network')
+        self.do('initial/create_od')
+
+        # main Point generator part
+        points=[]
+        rows=[]
+        points.append(complex(0,0))
+        vector=cmath.rect(1,cmath.pi/3) # single vector of 1/6 circle
+
+        rows.append([1]) # 1 elements inner # connected to outgoing rows
+        rows.append([vector+1]) # 1 elements outer
+        rows.append([i+2 for i in range(size)])
+        rows.append([i+2+vector for i in range(size)])
+        rows.append([i+2+vector.conjugate() for i in range(size)])
+        rows.append([i+2+size for i in range(size)])
+
+        parts=[
+            [
+                [
+                    point*part*delta
+                    for point in row
+                ]
+                for row in rows
+            ]
+            for part in [1,vector,vector**2,vector**3,vector**4,vector**5]
+        ]
+        net_geometry_to_insert=[]
+        net_data_to_insert=[]
+
+
+        for part_idx,rows in enumerate(parts):
+            self._addel(
+                parts[part_idx][0][0],
+                points[0],
+                net_geometry_to_insert,net_data_to_insert)
+            self._addel(
+                points[0],
+                parts[part_idx][0][0],
+                net_geometry_to_insert,net_data_to_insert)
+
+            self._addel(
+                parts[part_idx][0][0],
+                parts[part_idx][1][0],
+                net_geometry_to_insert,net_data_to_insert)
+            self._addel(
+                parts[part_idx][1][0],
+                parts[part_idx][0][0],
+                net_geometry_to_insert,net_data_to_insert)
+
+            self._addel(
+                parts[part_idx][1][0],
+                parts[(part_idx+1)%6][0][0],
+                net_geometry_to_insert,net_data_to_insert)
+            self._addel(
+                parts[(part_idx+1)%6][0][0],
+                parts[part_idx][1][0],
+                net_geometry_to_insert,net_data_to_insert)
+
+            for point_idx,point in enumerate(rows[2]):
+                if point_idx!=0:
+                    self._addel(
+                        rows[2][point_idx],
+                        rows[2][point_idx-1],
+                        net_geometry_to_insert,net_data_to_insert)
+                    self._addel(
+                        rows[2][point_idx-1],
+                        rows[2][point_idx],
+                        net_geometry_to_insert,net_data_to_insert)
+                else:
+                    self._addel(
+                        rows[2][0],
+                        rows[0][0],
+                        net_geometry_to_insert,net_data_to_insert)
+                    self._addel(
+                        rows[0][0],
+                        rows[2][0],
+                        net_geometry_to_insert,net_data_to_insert)
+
+                self._addel(
+                    rows[2][point_idx],
+                    rows[3][point_idx],
+                    net_geometry_to_insert,net_data_to_insert)
+                self._addel(
+                    rows[3][point_idx],
+                    rows[2][point_idx],
+                    net_geometry_to_insert,net_data_to_insert)
+
+                self._addel(
+                    rows[2][point_idx],
+                    rows[4][point_idx],
+                    net_geometry_to_insert,net_data_to_insert)
+                self._addel(
+                    rows[4][point_idx],
+                    rows[2][point_idx],
+                    net_geometry_to_insert,net_data_to_insert)
+            for point_idx,point in enumerate(rows[5]):
+                if point_idx!=0:
+                    self._addel(
+                        rows[5][point_idx],
+                        rows[5][point_idx-1],
+                        net_geometry_to_insert,net_data_to_insert)
+                    self._addel(
+                        rows[5][point_idx-1],
+                        rows[5][point_idx],
+                        net_geometry_to_insert,net_data_to_insert)
+                else:
+                    self._addel(
+                        rows[5][0],
+                        rows[2][-1],
+                        net_geometry_to_insert,net_data_to_insert)
+                    self._addel(
+                        rows[2][-1],
+                        rows[5][0],
+                        net_geometry_to_insert,net_data_to_insert)
+
+        points+=[point for part in parts for row in part for point in row]
+
+        # Let add some data to geometries
+        points_with_data=[{
+            'geometry':[point.real,point.imag],
+            'data':{
+                'od_id':i,
+                'origins':1,
+                'destinations':1
+            }
+        } for i,point in enumerate(points)]
+
+        # Data normalization
+        self._normalize(points_with_data)
+
+        #insert
+        self._insert_points(points_with_data)
+
 
         self.transaction('initial/import_network_geometry',net_geometry_to_insert)
         self.transaction('initial/import_network_properties',net_data_to_insert)
